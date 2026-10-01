@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="id" class="dark scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CineMastery - Simulasi Aperture Bokeh Realistis</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        amber: { 400: '#fbbf24', 500: '#f59e0b', 600: '#d97706' },
+                        cyan: { 400: '#22d3ee', 500: '#06b6d4', 600: '#0891b2' },
+                        dark: { bg: '#080c14', surface: '#0f172a', card: '#162032', border: '#1e2d42' }
+                    },
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome Icons & Google Fonts -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #080c14;
+            color: #f1f5f9;
+        }
+
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .glass-card {
+            background: rgba(22, 32, 50, 0.75);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        /* Custom Range Slider */
+        input[type=range] {
+            -webkit-appearance: none;
+            background: #1e2d42;
+            height: 6px;
+            border-radius: 9999px;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 18px;
+            width: 18px;
+            border-radius: 50%;
+            background: #06b6d4;
+            cursor: pointer;
+            box-shadow: 0 0 12px rgba(6, 182, 212, 0.8);
+            transition: all 0.2s ease;
+        }
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.25);
+            background: #38bdf8;
+        }
+
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #080c14; }
+        ::-webkit-scrollbar-thumb { background: #1e2d42; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #334155; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col selection:bg-cyan-500 selection:text-black">
+
+    <header class="sticky top-0 z-50 glass-panel border-b border-slate-800/80">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-20">
+                <a href="#" class="flex items-center space-x-3 group">
+                    <div class="relative flex items-center justify-center w-11 h-11 rounded-xl bg-gradient-to-tr from-amber-500 to-cyan-500 p-[1px]">
+                        <div class="w-full h-full bg-dark-bg rounded-[11px] flex items-center justify-center">
+                            <i class="fa-solid fa-video text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-cyan-400 text-lg"></i>
+                        </div>
+                    </div>
+                    <div>
+                        <span class="text-xl font-extrabold tracking-wider text-white">
+                            CINE<span class="text-cyan-400 font-light">MASTERY</span>
+                        </span>
+                        <span class="block text-[10px] font-mono tracking-widest text-slate-400 uppercase -mt-1">Real Bokeh Depth-of-Field Simulator</span>
+                    </div>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-8">
+
+        <!-- SECTION: REAL PHOTO BOKEH EXPOSURE SIMULATOR -->
+        <section class="space-y-8">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800/80 pb-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-white flex items-center gap-3">
+                        <span class="p-2 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400">
+                            <i class="fa-solid fa-sliders"></i>
+                        </span>
+                        Simulasi Segitiga Exposure & Depth of Field (Bokeh Latar Belakang)
+                    </h2>
+                    <p class="text-slate-400 text-xs sm:text-sm mt-1">Sistem pemisahan layer: Subjek utama di depan **tetap tajam**, sementara latar belakang menjadi **bokeh** sesuai besarnya bukaan Aperture (f-stop).</p>
+                </div>
+                
+                <div class="flex items-center gap-3">
+                    <button onclick="resetSimulator()" class="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-semibold transition border border-slate-800 flex items-center gap-2">
+                        <i class="fa-solid fa-rotate-left text-amber-400"></i> Reset Parameter
+                    </button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                
+                <!-- REAL IMAGE CANVAS VIEWPORT -->
+                <div class="lg:col-span-7 space-y-4">
+                    <div class="relative glass-panel rounded-2xl border border-slate-800 overflow-hidden shadow-2xl flex flex-col justify-center items-center min-h-[380px] sm:min-h-[420px] bg-black">
+                        
+                        <!-- Viewfinder Overlay -->
+                        <div class="absolute inset-0 pointer-events-none border-[12px] border-dark-bg/70 z-20"></div>
+                        <div class="absolute inset-0 pointer-events-none z-20 flex items-center justify-center opacity-30">
+                            <div class="w-16 h-16 border border-cyan-400/60 rounded-full flex items-center justify-center">
+                                <div class="w-2 h-2 bg-cyan-400 rounded-full"></div>
+                            </div>
+                        </div>
+
+                        <!-- Live Tag -->
+                        <div class="absolute top-4 left-4 z-20 flex items-center gap-2">
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                                <span class="w-2 h-2 rounded-full bg-amber-500 animate-ping mr-2"></span> REAL BOKEH LAYER ENGINE
+                            </span>
+                        </div>
+
+                        <!-- Canvas Engine -->
+                        <div class="w-full h-full flex items-center justify-center p-2">
+                            <canvas id="realExposureCanvas" width="800" height="533" class="w-full h-auto max-h-[390px] rounded-xl object-contain"></canvas>
+                        </div>
+
+                        <!-- Exposure EV Light Meter -->
+                        <div class="w-full bg-slate-950/90 border-t border-slate-800/80 p-3.5 z-20 flex flex-col sm:flex-row items-center justify-between gap-3 px-6">
+                            <div class="flex items-center space-x-2">
+                                <span class="text-xs font-mono text-slate-400">LIGHT METER (EV):</span>
+                                <div class="flex items-center space-x-1.5 bg-slate-900 px-3 py-1 rounded-lg border border-slate-800">
+                                    <span class="text-[10px] text-slate-500 font-mono">-3</span>
+                                    <span class="w-1 h-1 rounded-full bg-slate-700"></span>
+                                    <span class="text-[10px] text-slate-500 font-mono">-2</span>
+                                    <span class="w-1 h-1 rounded-full bg-slate-700"></span>
+                                    <span class="text-[10px] text-slate-500 font-mono">-1</span>
+                                    <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-sm shadow-cyan-400" id="ev-center"></span>
+                                    <span class="text-[10px] text-slate-500 font-mono">+1</span>
+                                    <span class="w-1 h-1 rounded-full bg-slate-700"></span>
+                                    <span class="text-[10px] text-slate-500 font-mono">+2</span>
+                                    <span class="w-1 h-1 rounded-full bg-slate-700"></span>
+                                    <span class="text-[10px] text-slate-500 font-mono">+3</span>
+                                </div>
+                            </div>
+
+                            <div id="exposure-status-pill" class="px-3 py-1 rounded-full text-[10px] font-mono font-bold tracking-wider uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                                BALANCED EXPOSURE (0 EV)
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Parameter Status Card -->
+                    <div class="grid grid-cols-3 gap-3">
+                        <div class="glass-card p-3 rounded-xl text-center border border-slate-800">
+                            <span class="text-[10px] font-mono text-slate-400 uppercase block mb-1">Aperture</span>
+                            <span id="disp-aperture" class="text-base sm:text-lg font-mono font-bold text-amber-400">f/1.4</span>
+                            <span id="sub-aperture" class="text-[10px] text-slate-500 block truncate">Bokeh Latar Belakang</span>
+                        </div>
+                        <div class="glass-card p-3 rounded-xl text-center border border-slate-800">
+                            <span class="text-[10px] font-mono text-slate-400 uppercase block mb-1">Shutter Speed</span>
+                            <span id="disp-shutter" class="text-base sm:text-lg font-mono font-bold text-cyan-400">1/250s</span>
+                            <span id="sub-shutter" class="text-[10px] text-slate-500 block truncate">Bekukan Gerakan</span>
+                        </div>
+                        <div class="glass-card p-3 rounded-xl text-center border border-slate-800">
+                            <span class="text-[10px] font-mono text-slate-400 uppercase block mb-1">ISO Sensitivity</span>
+                            <span id="disp-iso" class="text-base sm:text-lg font-mono font-bold text-emerald-400">100</span>
+                            <span id="sub-iso" class="text-[10px] text-slate-500 block truncate">Foto Tajam Bersih</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CONTROLS PANEL -->
+                <div class="lg:col-span-5 glass-panel p-6 rounded-2xl border border-slate-800/80 space-y-6">
+                    <div class="flex items-center justify-between border-b border-slate-800/80 pb-3">
+                        <h3 class="font-bold text-white text-base flex items-center gap-2">
+                            <i class="fa-solid fa-sliders text-cyan-400"></i> Control Panel Segitiga Exposure
+                        </h3>
+                        <span class="text-[11px] font-mono text-slate-400">MANUAL MODE</span>
+                    </div>
+
+                    <!-- Aperture Control -->
+                    <div class="space-y-2">
+                        <div class="flex justify-between items-center">
+                            <label class="text-xs font-semibold text-amber-400 flex items-center gap-2">
+                                <i class="fa-solid fa-circle-dot"></i> Aperture (Bukaan Diafragma)
+                            </label>
+                            <span id="val-aperture" class="font-mono text-xs font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">f/1.4</span>
+                        </div>
+                        <input type="range" id="input-aperture" min="0" max="8" step="1" value="0" class="w-full accent-amber-500">
+                        <div class="flex justify-between text-[10px] font-mono text-slate-500">
+                            <span>f/1.4 (Bukaan Besar / Bokeh)</span>
+                            <span>f/22 (Bukaan Kecil / Tajam)</span>
+                        </div>
+                    </div>
+
+                    <!-- Shutter Speed Control -->
+                    <div class="space-y-2">
+                        <div class="flex justify-between items-center">
+                            <label class="text-xs font-semibold text-cyan-400 flex items-center gap-2">
+                                <i class="fa-solid fa-stopwatch"></i> Shutter Speed (Kecepatan Rana)
+                            </label>
+                            <span id="val-shutter" class="font-mono text-xs font-bold text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20">1/250s</span>
+                        </div>
+                        <input type="range" id="input-shutter" min="0" max="8" step="1" value="4" class="w-full accent-cyan-500">
+                        <div class="flex justify-between text-[10px] font-mono text-slate-500">
+                            <span>1/4000s (Bekukan Gerak)</span>
+                            <span>1s (Motion Blur)</span>
+                        </div>
+                    </div>
+
+                    <!-- ISO Control -->
+                    <div class="space-y-2">
+                        <div class="flex justify-between items-center">
+                            <label class="text-xs font-semibold text-emerald-400 flex items-center gap-2">
+                                <i class="fa-solid fa-bolt"></i> Sensitivitas ISO
+                            </label>
+                            <span id="val-iso" class="font-mono text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">ISO 100</span>
+                        </div>
+                        <input type="range" id="input-iso" min="0" max="7" step="1" value="2" class="w-full accent-emerald-500">
+                        <div class="flex justify-between text-[10px] font-mono text-slate-500">
+                            <span>100 (Jernih Bebas Noise)</span>
+                            <span>12800 (Bintik Noise)</span>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-800 space-y-2 text-xs text-slate-300">
+                        <span class="font-bold text-amber-400 block"><i class="fa-solid fa-circle-info mr-1"></i> Penjelasan Efek Aperture Nyata:</span>
+                        <ul class="space-y-1 text-[11px] text-slate-300 leading-relaxed">
+                            <li>• <strong>f/1.4 (Bukaan Sangat Besar)</strong>: Latar belakang lampu kota di belakang menjadi sangat kabur/bokeh lebat, namun subjek manusia di depan <strong>tetap fokus tajam</strong>.</li>
+                            <li>• <strong>f/22 (Bukaan Sangat Kecil)</strong>: Baik subjek manusia maupun gedung-gedung di latar belakang tampak <strong>sama-sama tajam</strong> (Depth of Field luas).</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="bg-dark-bg border-t border-slate-800/80 text-slate-400 py-6 text-center text-xs mt-auto">
+        <p>© CineMastery Lab - Real Multi-Layer Bokeh & Exposure Simulator Engine.</p>
+    </footer>
+
+    <script>
+        const APERTURES = [
+            { display: 'f/1.4', val: 1.4, bgBlur: 16, evOffset: 3 },
+            { display: 'f/2.0', val: 2.0, bgBlur: 12, evOffset: 2 },
+            { display: 'f/2.8', val: 2.8, bgBlur: 8,  evOffset: 1 },
+            { display: 'f/4.0', val: 4.0, bgBlur: 5,  evOffset: 0 },
+            { display: 'f/5.6', val: 5.6, bgBlur: 3,  evOffset: -1 },
+            { display: 'f/8.0', val: 8.0, bgBlur: 1.5,evOffset: -2 },
+            { display: 'f/11',  val: 11,  bgBlur: 0.5,evOffset: -3 },
+            { display: 'f/16',  val: 16,  bgBlur: 0,  evOffset: -4 },
+            { display: 'f/22',  val: 22,  bgBlur: 0,  evOffset: -5 }
+        ];
+
+        const SHUTTERS = [
+            { display: '1/4000s', val: 1/4000, motionBlur: 0,  evOffset: -4 },
+            { display: '1/2000s', val: 1/2000, motionBlur: 0,  evOffset: -3 },
+            { display: '1/1000s', val: 1/1000, motionBlur: 0,  evOffset: -2 },
+            { display: '1/500s',  val: 1/500,  motionBlur: 0.5,evOffset: -1 },
+            { display: '1/250s',  val: 1/250,  motionBlur: 1,  evOffset: 0 },
+            { display: '1/125s',  val: 1/125,  motionBlur: 3,  evOffset: 1 },
+            { display: '1/60s',   val: 1/60,   motionBlur: 6,  evOffset: 2 },
+            { display: '1/30s',   val: 1/30,   motionBlur: 12, evOffset: 3 },
+            { display: '1s',      val: 1,      motionBlur: 25, evOffset: 4 }
+        ];
+
+        const ISOS = [
+            { display: 'ISO 100',   val: 100,   noiseAmount: 0,   evOffset: 0 },
+            { display: 'ISO 200',   val: 200,   noiseAmount: 0.1, evOffset: 1 },
+            { display: 'ISO 400',   val: 400,   noiseAmount: 0.2, evOffset: 2 },
+            { display: 'ISO 800',   val: 800,   noiseAmount: 0.4, evOffset: 3 },
+            { display: 'ISO 1600',  val: 1600,  noiseAmount: 0.8, evOffset: 4 },
+            { display: 'ISO 3200',  val: 3200,  noiseAmount: 1.5, evOffset: 5 },
+            { display: 'ISO 6400',  val: 6400,  noiseAmount: 2.5, evOffset: 6 },
+            { display: 'ISO 12800', val: 12800, noiseAmount: 4.0, evOffset: 7 }
+        ];
+
+        let simState = {
+            apertureIdx: 0,
+            shutterIdx: 4,
+            isoIdx: 2
+        };
+
+        const canvas = document.getElementById('realExposureCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Load Background Photo (Pemandangan Kota Malam/Bintang yang Kaya Cahaya)
+        const bgImg = new Image();
+        bgImg.crossOrigin = "anonymous";
+        bgImg.src = "https://images.unsplash.com/photo-1519501025264-65ba15a82390?auto=format&fit=crop&w=1000&q=80";
+
+        // Load Subject Photo (Karakter Manusia / Kamera)
+        const subjectImg = new Image();
+        subjectImg.crossOrigin = "anonymous";
+        subjectImg.src = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80";
+
+        let imagesLoaded = 0;
+        function checkLoaded() {
+            imagesLoaded++;
+            if(imagesLoaded === 2) renderRealExposure();
+        }
+        bgImg.onload = checkLoaded;
+        subjectImg.onload = checkLoaded;
+
+        function calculateEV() {
+            return APERTURES[simState.apertureIdx].evOffset + SHUTTERS[simState.shutterIdx].evOffset + ISOS[simState.isoIdx].evOffset;
+        }
+
+        function renderRealExposure() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const ap = APERTURES[simState.apertureIdx];
+            const sh = SHUTTERS[simState.shutterIdx];
+            const iso = ISOS[simState.isoIdx];
+            const ev = calculateEV();
+
+            // -------------------------------------------------------------
+            // LAYER 1: LATAR BELAKANG (BOKEH DENGAN BLUR DINAMIS APERTURE)
+            // -------------------------------------------------------------
+            ctx.save();
+            if (ap.bgBlur > 0) {
+                ctx.filter = `blur(${ap.bgBlur}px)`;
+            }
+            ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
+            ctx.restore();
+
+            // -------------------------------------------------------------
+            // LAYER 2: SUBJEK UTAMA DI DEPAN (TETAP TAJAM FOKUS PERMANEN)
+            // -------------------------------------------------------------
+            ctx.save();
+            // Jika shutter speed lambat, beri sedikit efek motion blur pada subjek
+            if (sh.motionBlur > 2) {
+                ctx.filter = `blur(${sh.motionBlur * 0.4}px)`;
+            }
+            
+            // Menggambar Portrait Subjek Utama di Sisi Tengah
+            const subWidth = 320;
+            const subHeight = 480;
+            const subX = (canvas.width - subWidth) / 2 + 50;
+            const subY = canvas.height - subHeight;
+
+            // Efek siluet/vignette lembut di sekeliling subjek agar menyatu sempurna
+            ctx.shadowColor = 'rgba(0,0,0,0.6)';
+            ctx.shadowBlur = 20;
+
+            ctx.drawImage(subjectImg, subX, subY, subWidth, subHeight);
+            ctx.restore();
+
+            // -------------------------------------------------------------
+            // LAYER 3: LIGHTING & EXPOSURE OVERLAY (PENGARUH EV METER)
+            // -------------------------------------------------------------
+            if (ev < 0) {
+                // Gelap (Under-exposed)
+                const darkOpacity = Math.min(Math.abs(ev) * 0.2, 0.92);
+                ctx.fillStyle = `rgba(8, 12, 20, ${darkOpacity})`;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            } else if (ev > 0) {
+                // Terang Silau (Over-exposed)
+                const lightOpacity = Math.min(ev * 0.18, 0.92);
+                ctx.fillStyle = `rgba(255, 255, 255, ${lightOpacity})`;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+
+            // -------------------------------------------------------------
+            // LAYER 4: ISO DIGITAL NOISE / GRAIN
+            // -------------------------------------------------------------
+            if (iso.noiseAmount > 0.1) {
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.22)';
+                const noiseDots = iso.noiseAmount * 1100;
+                for (let i = 0; i < noiseDots; i++) {
+                    const x = Math.random() * canvas.width;
+                    const y = Math.random() * canvas.height;
+                    const size = Math.random() * 1.6 + 0.4;
+                    ctx.fillRect(x, y, size, size);
+                }
+            }
+        }
+
+        function updateSimulatorUI() {
+            const currentAp = APERTURES[simState.apertureIdx];
+            const currentSh = SHUTTERS[simState.shutterIdx];
+            const currentIso = ISOS[simState.isoIdx];
+
+            document.getElementById('val-aperture').innerText = currentAp.display;
+            document.getElementById('disp-aperture').innerText = currentAp.display;
+            document.getElementById('sub-aperture').innerText = currentAp.bgBlur > 4 ? 'Latar Belakang Bokeh' : 'Tajam Keseluruhan';
+
+            document.getElementById('val-shutter').innerText = currentSh.display;
+            document.getElementById('disp-shutter').innerText = currentSh.display;
+            document.getElementById('sub-shutter').innerText = currentSh.motionBlur > 3 ? 'Efek Motion Blur' : 'Bekukan Gerakan';
+
+            document.getElementById('val-iso').innerText = currentIso.display;
+            document.getElementById('disp-iso').innerText = currentIso.display;
+            document.getElementById('sub-iso').innerText = currentIso.noiseAmount > 1 ? 'Bintik Noise Grain' : 'Foto Jernih';
+
+            const ev = calculateEV();
+            const pill = document.getElementById('exposure-status-pill');
+
+            if(ev === 0) {
+                pill.className = "px-3 py-1 rounded-full text-[10px] font-mono font-bold tracking-wider uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
+                pill.innerText = "BALANCED EXPOSURE (0 EV)";
+            } else if(ev < 0) {
+                pill.className = "px-3 py-1 rounded-full text-[10px] font-mono font-bold tracking-wider uppercase bg-cyan-500/20 text-cyan-400 border border-cyan-500/30";
+                pill.innerText = `UNDER-EXPOSED (${ev} EV)`;
+            } else {
+                pill.className = "px-3 py-1 rounded-full text-[10px] font-mono font-bold tracking-wider uppercase bg-red-500/20 text-red-400 border border-red-500/30";
+                pill.innerText = `OVER-EXPOSED (+${ev} EV)`;
+            }
+
+            renderRealExposure();
+        }
+
+        function resetSimulator() {
+            simState.apertureIdx = 0;
+            simState.shutterIdx = 4;
+            simState.isoIdx = 2;
+            document.getElementById('input-aperture').value = 0;
+            document.getElementById('input-shutter').value = 4;
+            document.getElementById('input-iso').value = 2;
+            updateSimulatorUI();
+        }
+
+        // Event Listeners
+        document.getElementById('input-aperture').addEventListener('input', (e) => {
+            simState.apertureIdx = parseInt(e.target.value);
+            updateSimulatorUI();
+        });
+        document.getElementById('input-shutter').addEventListener('input', (e) => {
+            simState.shutterIdx = parseInt(e.target.value);
+            updateSimulatorUI();
+        });
+        document.getElementById('input-iso').addEventListener('input', (e) => {
+            simState.isoIdx = parseInt(e.target.value);
+            updateSimulatorUI();
+        });
+
+        window.onload = () => {
+            updateSimulatorUI();
+        };
+    </script>
+</body>
+</html>
